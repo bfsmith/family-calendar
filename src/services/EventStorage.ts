@@ -150,7 +150,7 @@ class EventStorageService {
     });
   }
 
-  // Query events with filters
+  // Query events with filters and dynamic recurring event calculation
   async queryEvents(query: EventQuery = {}): Promise<Event[]> {
     if (!databaseService.isInitialized()) throw new Error('Database not initialized');
 
@@ -161,63 +161,231 @@ class EventStorageService {
       const request = store.getAll();
 
       request.onsuccess = () => {
-        let events = request.result as Event[];
+        let allEvents = request.result as Event[];
+        let eventsInRange: Event[] = [];
 
-        // Apply filters
-        if (query.startDate) {
-          events = events.filter(event => event.endTime >= query.startDate!);
-        }
-        if (query.endDate) {
-          events = events.filter(event => event.startTime <= query.endDate!);
-        }
+        // Apply basic filters first
         if (query.title) {
-          events = events.filter(event => 
+          allEvents = allEvents.filter(event => 
             event.title.toLowerCase().includes(query.title!.toLowerCase())
           );
         }
         if (query.calendarId) {
-          events = events.filter(event => event.calendarId === query.calendarId);
+          allEvents = allEvents.filter(event => event.calendarId === query.calendarId);
         }
         if (query.recurringOnly) {
-          events = events.filter(event => event.recurring !== undefined);
+          allEvents = allEvents.filter(event => event.recurring !== undefined);
+        }
+
+        // For each event, check if it occurs in the requested time range
+        for (const event of allEvents) {
+          if (event.recurring && query.startDate && query.endDate) {
+            // For recurring events, generate virtual occurrences in the time range
+            const occurrences = this.calculateEventOccurrencesInRange(event, query.startDate, query.endDate);
+            eventsInRange.push(...occurrences);
+          } else {
+            // For non-recurring events, apply date filters normally
+            let includeEvent = true;
+            
+            if (query.startDate && event.endTime < query.startDate) {
+              includeEvent = false;
+            }
+            if (query.endDate && event.startTime > query.endDate) {
+              includeEvent = false;
+            }
+            
+            if (includeEvent) {
+              eventsInRange.push(event);
+            }
+          }
         }
 
         // Apply pagination
         if (query.offset) {
-          events = events.slice(query.offset);
+          eventsInRange = eventsInRange.slice(query.offset);
         }
         if (query.limit) {
-          events = events.slice(0, query.limit);
+          eventsInRange = eventsInRange.slice(0, query.limit);
         }
 
-        resolve(events);
+        resolve(eventsInRange);
       };
 
       request.onerror = () => reject(new Error('Failed to query events'));
     });
   }
 
+  // Calculate event occurrences within a specific date range for recurring events
+  private calculateEventOccurrencesInRange(event: Event, startDate: Date, endDate: Date): Event[] {
+    if (!event.recurring) return [];
+
+    const occurrences: Event[] = [];
+    
+    switch (event.recurring.type) {
+      case 'daily':
+        occurrences.push(...this.calculateDailyOccurrences(event, startDate, endDate));
+        break;
+      case 'weekly':
+        occurrences.push(...this.calculateWeeklyOccurrences(event, startDate, endDate));
+        break;
+      case 'hourly':
+        occurrences.push(...this.calculateHourlyOccurrences(event, startDate, endDate));
+        break;
+    }
+
+    return occurrences;
+  }
+
+  private calculateDailyOccurrences(event: Event, startDate: Date, endDate: Date): Event[] {
+    const occurrences: Event[] = [];
+    const { interval } = event.recurring as DailyRecurrence;
+    
+    // Start from the event's original date or the query start date, whichever is later
+    let currentDate = new Date(Math.max(event.startTime.getTime(), startDate.getTime()));
+    currentDate.setHours(0, 0, 0, 0); // Start at beginning of day
+    
+    // Calculate days since the original event to maintain proper interval
+    const originalDate = new Date(event.startTime);
+    originalDate.setHours(0, 0, 0, 0);
+    const daysSinceOriginal = Math.floor((currentDate.getTime() - originalDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Adjust to the next valid occurrence based on interval
+    const remainder = daysSinceOriginal % interval;
+    if (remainder !== 0) {
+      currentDate.setDate(currentDate.getDate() + (interval - remainder));
+    }
+
+    while (currentDate <= endDate) {
+      const occurrenceStart = new Date(currentDate);
+      occurrenceStart.setHours(event.startTime.getHours(), event.startTime.getMinutes(), 0, 0);
+      
+      const occurrenceEnd = new Date(currentDate);
+      occurrenceEnd.setHours(event.endTime.getHours(), event.endTime.getMinutes(), 0, 0);
+      
+      // Only include if the occurrence overlaps with our query range
+      if (occurrenceEnd >= startDate && occurrenceStart <= endDate) {
+        occurrences.push({
+          ...event,
+          startTime: occurrenceStart,
+          endTime: occurrenceEnd,
+          id: `${event.id}_${occurrenceStart.getTime()}` // Unique ID for this occurrence
+        });
+      }
+      
+      currentDate.setDate(currentDate.getDate() + interval);
+    }
+
+    return occurrences;
+  }
+
+  private calculateWeeklyOccurrences(event: Event, startDate: Date, endDate: Date): Event[] {
+    const occurrences: Event[] = [];
+    const { daysOfWeek, interval } = event.recurring as WeeklyRecurrence;
+    
+    // Start from the beginning of the week containing the start date
+    let currentDate = new Date(startDate);
+    currentDate.setDate(currentDate.getDate() - currentDate.getDay()); // Go to Sunday
+    currentDate.setHours(0, 0, 0, 0);
+    
+    // Find the first valid week based on the original event date and interval
+    const originalDate = new Date(event.startTime);
+    const originalWeekStart = new Date(originalDate);
+    originalWeekStart.setDate(originalDate.getDate() - originalDate.getDay());
+    originalWeekStart.setHours(0, 0, 0, 0);
+    
+    const weeksSinceOriginal = Math.floor((currentDate.getTime() - originalWeekStart.getTime()) / (1000 * 60 * 60 * 24 * 7));
+    const remainder = weeksSinceOriginal % interval;
+    if (remainder !== 0) {
+      currentDate.setDate(currentDate.getDate() + (interval - remainder) * 7);
+    }
+
+    while (currentDate <= endDate) {
+      // Check each day of the week for this interval
+      for (const dayOfWeek of daysOfWeek) {
+        const occurrenceDate = new Date(currentDate);
+        occurrenceDate.setDate(currentDate.getDate() + dayOfWeek);
+        
+        // Skip if this day is outside our query range
+        if (occurrenceDate < startDate || occurrenceDate > endDate) continue;
+        
+        const occurrenceStart = new Date(occurrenceDate);
+        occurrenceStart.setHours(event.startTime.getHours(), event.startTime.getMinutes(), 0, 0);
+        
+        const occurrenceEnd = new Date(occurrenceDate);
+        occurrenceEnd.setHours(event.endTime.getHours(), event.endTime.getMinutes(), 0, 0);
+        
+        occurrences.push({
+          ...event,
+          startTime: occurrenceStart,
+          endTime: occurrenceEnd,
+          id: `${event.id}_${occurrenceStart.getTime()}` // Unique ID for this occurrence
+        });
+      }
+      
+      // Move to next interval
+      currentDate.setDate(currentDate.getDate() + interval * 7);
+    }
+
+    return occurrences;
+  }
+
+  private calculateHourlyOccurrences(event: Event, startDate: Date, endDate: Date): Event[] {
+    const occurrences: Event[] = [];
+    const { startHour, endHour, interval, daysOfWeek } = event.recurring as HourlyRecurrence;
+    
+    let currentDate = new Date(startDate);
+    currentDate.setHours(0, 0, 0, 0);
+
+    while (currentDate <= endDate) {
+      const dayOfWeek = currentDate.getDay();
+      
+      // Skip this day if it's not in the allowed days of week
+      if (daysOfWeek && !daysOfWeek.includes(dayOfWeek)) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        continue;
+      }
+      
+      // Generate occurrences for each hour in the range
+      for (let hour = startHour; hour < endHour; hour += interval) {
+        const occurrenceStart = new Date(currentDate);
+        occurrenceStart.setHours(hour, event.startTime.getMinutes(), 0, 0);
+        
+        const occurrenceEnd = new Date(occurrenceStart);
+        occurrenceEnd.setTime(occurrenceStart.getTime() + (event.endTime.getTime() - event.startTime.getTime()));
+        
+        // Only include if the occurrence overlaps with our query range
+        if (occurrenceEnd >= startDate && occurrenceStart <= endDate) {
+          occurrences.push({
+            ...event,
+            startTime: occurrenceStart,
+            endTime: occurrenceEnd,
+            id: `${event.id}_${occurrenceStart.getTime()}` // Unique ID for this occurrence
+          });
+        }
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return occurrences;
+  }
+
   // Get events for a specific date range (for calendar view)
   async getEventsForDateRange(startDate: Date, endDate: Date): Promise<EventInstance[]> {
     if (!databaseService.isInitialized()) throw new Error('Database not initialized');
 
+    // Use the new dynamic query system which handles recurring events automatically
     const events = await this.queryEvents({ startDate, endDate });
     const instances: EventInstance[] = [];
 
     for (const event of events) {
-      if (event.recurring) {
-        // Get recurring instances for this date range
-        const recurringInstances = await this.getEventInstances(event.id, startDate, endDate);
-        instances.push(...recurringInstances);
-      } else {
-        // Single event
-        instances.push({
-          eventId: event.id,
-          startTime: event.startTime,
-          endTime: event.endTime,
-          isRecurring: false
-        });
-      }
+      // Convert each event (including dynamically generated recurring occurrences) to an EventInstance
+      instances.push({
+        eventId: event.id.includes('_') ? event.id.split('_')[0] : event.id, // Extract original event ID
+        startTime: event.startTime,
+        endTime: event.endTime,
+        isRecurring: !!event.recurring || event.id.includes('_') // True if original has recurrence or this is a generated occurrence
+      });
     }
 
     return instances.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());

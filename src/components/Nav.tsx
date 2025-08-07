@@ -13,7 +13,8 @@ export default function Nav() {
       <div class="navbar-start">
         <ul class="menu menu-horizontal px-1">
           <li><A href="/" class={active("/")}>Family Calendar</A></li>
-          <li><A href="/calendar" class={active("/calendar")}>Calendar</A></li>
+          <li><A href="/family-members" class={active("/family-members")}>Family Members</A></li>
+          <li><A href="/calendar" class={active("/calendar")}>Calendars</A></li>
         </ul>
       </div>
       <div class="navbar-end">

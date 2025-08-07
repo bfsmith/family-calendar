@@ -1,13 +1,13 @@
 import { createSignal } from "solid-js";
 import { eventStorage } from "../services/EventStorage";
 import LoadingSpinner from "./LoadingSpinner";
-import type { Calendar } from "../types/Calendar";
+import type { FamilyMember } from "../types/FamilyMember";
 
 interface CreateEventDialogProps {
   show: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-  calendars: Calendar[];
+  calendars: FamilyMember[];
 }
 
 export default function CreateEventDialog(props: CreateEventDialogProps) {
@@ -49,7 +49,7 @@ export default function CreateEventDialog(props: CreateEventDialogProps) {
     }
 
     if (!selectedCalendarId()) {
-      alert("Please select a calendar");
+      alert("Please select a family member");
       return;
     }
 
@@ -200,7 +200,7 @@ export default function CreateEventDialog(props: CreateEventDialogProps) {
 
           <div class="form-control mb-4">
             <label class="label">
-              <span class="label-text">Calendar</span>
+              <span class="label-text">Family Member</span>
             </label>
             <select
               class="select select-bordered w-full"

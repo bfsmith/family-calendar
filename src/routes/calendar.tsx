@@ -1,21 +1,23 @@
 import { createSignal, onMount } from "solid-js";
-import CreateCalendarDialog from "../components/CreateCalendarDialog";
+
 import CreateEventDialog from "../components/CreateEventDialog";
-import { calendarStorage } from "../services/CalendarStorage";
+import { familyMemberStorage } from "../services/FamilyMemberStorage";
 import { eventStorage } from "../services/EventStorage";
-import type { Calendar } from "../types/Calendar";
+import type { FamilyMember } from "../types/FamilyMember";
 import type { Event } from "../types/Event";
 
 export default function Calendar() {
   const [currentHour, setCurrentHour] = createSignal(0);
   const [currentMinute, setCurrentMinute] = createSignal(0);
-  const [showCalendarDialog, setShowCalendarDialog] = createSignal(false);
+
   const [showEventDialog, setShowEventDialog] = createSignal(false);
-  const [calendars, setCalendars] = createSignal<Calendar[]>([]);
+  const [calendars, setCalendars] = createSignal<FamilyMember[]>([]);
   const [events, setEvents] = createSignal<Event[]>([]);
   const [selectedEventId, setSelectedEventId] = createSignal<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = createSignal(false);
   const [eventToDelete, setEventToDelete] = createSignal<Event | null>(null);
+  const [currentDate, setCurrentDate] = createSignal(new Date());
+  const [visibleFamilyMembers, setVisibleFamilyMembers] = createSignal<Set<string>>(new Set());
   
   // Generate hours from 6 AM to 12 AM (midnight)
   const hours = Array.from({ length: 19 }, (_, i) => i + 6);
@@ -39,13 +41,7 @@ export default function Calendar() {
     return (minutes / 60) * 100; // Percentage within the hour
   };
 
-  const openCalendarDialog = () => {
-    setShowCalendarDialog(true);
-  };
 
-  const closeCalendarDialog = () => {
-    setShowCalendarDialog(false);
-  };
 
   const openEventDialog = () => {
     setShowEventDialog(true);
@@ -55,21 +51,113 @@ export default function Calendar() {
     setShowEventDialog(false);
   };
 
+  const goToPreviousDay = () => {
+    const current = currentDate();
+    const previous = new Date(current);
+    previous.setDate(current.getDate() - 1);
+    setCurrentDate(previous);
+    loadEvents(); // Reload events for the new date
+  };
+
+  const goToNextDay = () => {
+    const current = currentDate();
+    const next = new Date(current);
+    next.setDate(current.getDate() + 1);
+    setCurrentDate(next);
+    loadEvents(); // Reload events for the new date
+  };
+
+  const formatDisplayDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setCurrentDate(today);
+    loadEvents(); // Reload events for today
+  };
+
+  // Helper function to determine if a color is light or dark
+  const isLightColor = (hexColor: string) => {
+    // Remove # if present
+    const hex = hexColor.replace('#', '');
+    
+    // Convert to RGB
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Calculate luminance using the relative luminance formula
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return true if light (luminance > 0.5)
+    return luminance > 0.5;
+  };
+
+  // Helper function to get high-contrast text box styling
+  const getTextBoxStyle = () => {
+    return {
+      "background-color": "rgba(0, 0, 0, 0.75)", // Semi-transparent black background
+      color: "#ffffff", // White text for high contrast
+      "border-radius": "4px",
+      padding: "2px 6px",
+      "backdrop-filter": "blur(2px)" // Subtle blur effect
+    };
+  };
+
   const loadCalendars = async () => {
     try {
-      const allCalendars = await calendarStorage.getAllCalendars();
+      const allCalendars = await familyMemberStorage.getAllFamilyMembers();
       setCalendars(allCalendars);
+      
+      // Initialize visible family members from localStorage or show all by default
+      const savedVisible = localStorage.getItem('visibleFamilyMembers');
+      if (savedVisible) {
+        try {
+          const visibleIds = JSON.parse(savedVisible) as string[];
+          setVisibleFamilyMembers(new Set(visibleIds));
+        } catch (error) {
+          console.error("Failed to parse saved family member visibility:", error);
+          setVisibleFamilyMembers(new Set(allCalendars.map(cal => cal.id)));
+        }
+      } else {
+        // Default to showing all family members
+        setVisibleFamilyMembers(new Set(allCalendars.map(cal => cal.id)));
+      }
     } catch (error) {
-      console.error("Failed to load calendars:", error);
+      console.error("Failed to load family members:", error);
     }
   };
 
+  const toggleFamilyMemberVisibility = (familyMemberId: string) => {
+    const current = visibleFamilyMembers();
+    const newVisible = new Set(current);
+    
+    if (newVisible.has(familyMemberId)) {
+      newVisible.delete(familyMemberId);
+    } else {
+      newVisible.add(familyMemberId);
+    }
+    
+    setVisibleFamilyMembers(newVisible);
+    // Save to localStorage
+    localStorage.setItem('visibleFamilyMembers', JSON.stringify(Array.from(newVisible)));
+  };
+
+  const isMultipleFamilyMembers = () => calendars().length > 1;
+  const getVisibleFamilyMembers = () => calendars().filter(cal => visibleFamilyMembers().has(cal.id));
+
   const loadEvents = async () => {
     try {
-      // Get today's events (you can modify this to show different date ranges)
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      // Get events for the current selected date
+      const date = currentDate();
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
       
       const allEvents = await eventStorage.queryEvents({
         startDate: startOfDay,
@@ -81,9 +169,7 @@ export default function Calendar() {
     }
   };
 
-  const handleCalendarCreated = () => {
-    loadCalendars(); // Reload calendars after creating a new one
-  };
+
 
   const handleEventCreated = () => {
     loadEvents(); // Reload events after creating a new one
@@ -180,14 +266,98 @@ export default function Calendar() {
     <main class="p-4" onClick={() => setSelectedEventId(null)}>
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-primary">Calendar</h1>
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center">
+          {/* Family Member Filter Dropdown */}
+          {isMultipleFamilyMembers() && (
+            <div class="dropdown dropdown-end">
+              <div tabindex="0" role="button" class="btn btn-outline btn-sm">
+                <i class="fas fa-filter mr-2"></i>
+                Filter ({getVisibleFamilyMembers().length}/{calendars().length})
+              </div>
+              <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-64 p-2 shadow-lg border border-base-300">
+                <li class="menu-title">
+                  <span>Show/Hide Family Members</span>
+                </li>
+                <div class="divider my-1"></div>
+                {calendars().map((calendar) => (
+                  <li>
+                    <label class="cursor-pointer flex items-center gap-3 px-2 py-2">
+                      <input 
+                        type="checkbox" 
+                        class="checkbox checkbox-sm"
+                        checked={visibleFamilyMembers().has(calendar.id)}
+                        onChange={() => toggleFamilyMemberVisibility(calendar.id)}
+                      />
+                      <div 
+                        class="w-4 h-4 rounded-full flex-shrink-0"
+                        style={{ "background-color": calendar.color }}
+                      ></div>
+                      <span class="flex-1">{calendar.name}</span>
+                    </label>
+                  </li>
+                ))}
+                <div class="divider my-1"></div>
+                <li>
+                  <button 
+                    class="btn btn-xs btn-ghost"
+                    onClick={() => {
+                      const allIds = calendars().map(cal => cal.id);
+                      setVisibleFamilyMembers(new Set(allIds));
+                      localStorage.setItem('visibleFamilyMembers', JSON.stringify(allIds));
+                    }}
+                  >
+                    Show All
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
+          
           <button class="btn btn-primary" onClick={openEventDialog}>
             Add Event
           </button>
-          <button class="btn btn-secondary" onClick={openCalendarDialog}>
-            Add Calendar
+        </div>
+      </div>
+
+      {/* Date navigation */}
+      <div class="flex flex-col sm:flex-row justify-center items-center mb-6 gap-4">
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <button 
+            class="btn btn-circle btn-outline flex-shrink-0"
+            onClick={goToPreviousDay}
+            title="Previous day"
+          >
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          
+          <div class="text-lg sm:text-xl font-semibold text-center flex-1 sm:flex-none sm:min-w-80 px-2">
+            {formatDisplayDate(currentDate())}
+          </div>
+          
+        <button 
+          class="btn btn-sm btn-outline w-auto hidden md:block"
+          onClick={goToToday}
+          title="Go to today"
+        >
+          Today
+        </button>
+          
+          <button 
+            class="btn btn-circle btn-outline flex-shrink-0"
+            onClick={goToNextDay}
+            title="Next day"
+          >
+            <i class="fas fa-chevron-right"></i>
           </button>
         </div>
+        
+        <button 
+          class="btn btn-sm btn-outline w-full md:hidden"
+          onClick={goToToday}
+          title="Go to today"
+        >
+          Today
+        </button>
       </div>
       
       <div class="flex overflow-x-auto">
@@ -206,8 +376,8 @@ export default function Calendar() {
         </div>
         
         {/* Calendar columns */}
-        {calendars().length > 0 ? (
-          calendars().map((calendar) => {
+        {getVisibleFamilyMembers().length > 0 ? (
+          getVisibleFamilyMembers().map((calendar) => {
             const calendarEvents = getEventsForCalendar(calendar.id);
             return (
               <div class="flex-1 min-w-48 border-r border-base-300 last:border-r-0 relative">
@@ -256,28 +426,25 @@ export default function Calendar() {
                   {/* Events overlay */}
                   {calendarEvents
                     .filter(event => isEventVisible(event))
-                    .map((event) => (
-                      <div
-                        class="rounded-md p-1 min-h-6 text-xs font-medium shadow-sm border-l-4 cursor-pointer hover:shadow-md transition-shadow relative"
-                        style={{
-                          ...getEventStyle(event),
-                          "background-color": (event.color || calendar.color) + "40",
-                          "border-left-color": event.color || calendar.color,
-                          color: "white",
-                          "text-shadow": "0 1px 2px rgba(0,0,0,0.5)"
-                        }}
-                        title={`${event.title}\n${event.startTime.toLocaleTimeString()} - ${event.endTime.toLocaleTimeString()}`}
-                        onClick={(e) => handleEventClick(event, e)}
-                      >
+                    .map((event) => {
+                      const eventColor = event.color || calendar.color;
+                      return (
+                        <div
+                          class="rounded-md p-1 min-h-7 text-xs font-medium shadow-sm border-l-4 cursor-pointer hover:shadow-md transition-shadow relative"
+                          style={{
+                            ...getEventStyle(event),
+                            "background-color": eventColor + "40",
+                            "border-left-color": eventColor
+                          }}
+                          title={`${event.title}\n${event.startTime.toLocaleTimeString()} - ${event.endTime.toLocaleTimeString()}`}
+                          onClick={(e) => handleEventClick(event, e)}
+                        >
                         <div class="flex items-center gap-1">
-                          <div class="truncate font-semibold">{event.title}</div>
+                          <div class="truncate font-semibold rounded" style={getTextBoxStyle()}>{event.title}</div>
                           {!event.allDay && (
-                            <>
-                              <div class="">|</div>
-                              <div class="text-xs opacity-90 whitespace-nowrap">
-                                {event.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}-{event.endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            </>
+                            <div class="text-xs whitespace-nowrap rounded" style={getTextBoxStyle()}>
+                              {event.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}-{event.endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
                           )}
                         </div>
                         
@@ -292,27 +459,31 @@ export default function Calendar() {
                           </button>
                         )}
                       </div>
-                    ))
+                      );
+                    })
                   }
                 </div>
               </div>
             );
           })
+        ) : calendars().length === 0 ? (
+          <div class="flex-1 flex items-center justify-center text-base-content/50 py-20">
+            <div class="text-center">
+              <p class="text-lg mb-2">No family members found</p>
+              <p class="text-sm">Go to <a href="/family-members" class="link link-primary">Family Members</a> to add your first family member</p>
+            </div>
+          </div>
         ) : (
           <div class="flex-1 flex items-center justify-center text-base-content/50 py-20">
             <div class="text-center">
-              <p class="text-lg mb-2">No calendars found</p>
-              <p class="text-sm">Click "Add Calendar" to create your first calendar</p>
+              <p class="text-lg mb-2">All family members are hidden</p>
+              <p class="text-sm">Use the filter button above to show family members</p>
             </div>
           </div>
         )}
       </div>
 
-      <CreateCalendarDialog 
-        show={showCalendarDialog()} 
-        onClose={closeCalendarDialog}
-        onSuccess={handleCalendarCreated}
-      />
+
 
       <CreateEventDialog 
         show={showEventDialog()} 

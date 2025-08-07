@@ -1,42 +1,40 @@
 import { createSignal } from "solid-js";
-import { calendarStorage } from "../services/CalendarStorage";
+import { familyMemberStorage } from "../services/FamilyMemberStorage";
 import LoadingSpinner from "./LoadingSpinner";
 
-interface CreateCalendarDialogProps {
+interface CreateFamilyMemberDialogProps {
   show: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
-export default function CreateCalendarDialog(props: CreateCalendarDialogProps) {
-  const [calendarName, setCalendarName] = createSignal("");
-  const [calendarColor, setCalendarColor] = createSignal("#3b82f6");
+export default function CreateFamilyMemberDialog(props: CreateFamilyMemberDialogProps) {
+  const [memberName, setMemberName] = createSignal("");
+  const [memberColor, setMemberColor] = createSignal("#3b82f6");
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
   const closeDialog = () => {
-    setCalendarName("");
-    setCalendarColor("#3b82f6");
+    setMemberName("");
+    setMemberColor("#3b82f6");
     setIsSubmitting(false);
     props.onClose();
   };
 
-
-
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     
-    if (!calendarName().trim()) {
-      alert("Please enter a calendar name");
+    if (!memberName().trim()) {
+      alert("Please enter a family member name");
       return;
     }
 
     setIsSubmitting(true);
     
     try {
-      // Create the calendar
-      await calendarStorage.createCalendar({
-        name: calendarName().trim(),
-        color: calendarColor()
+      // Create the family member
+      await familyMemberStorage.createFamilyMember({
+        name: memberName().trim(),
+        color: memberColor()
       });
       
       // Close dialog and reset form
@@ -46,8 +44,8 @@ export default function CreateCalendarDialog(props: CreateCalendarDialogProps) {
       props.onSuccess?.();
       
     } catch (error) {
-      console.error("Failed to create calendar:", error);
-      alert("Failed to create calendar. Please try again.");
+      console.error("Failed to create family member:", error);
+      alert("Failed to create family member. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -56,19 +54,19 @@ export default function CreateCalendarDialog(props: CreateCalendarDialogProps) {
   return (
     <div class={`modal ${props.show ? 'modal-open' : ''}`}>
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">Add New Calendar</h3>
+        <h3 class="font-bold text-lg mb-4">Add Family Member</h3>
         
         <form onSubmit={handleSubmit}>
           <div class="form-control mb-4">
             <label class="label">
-              <span class="label-text">Calendar Name</span>
+              <span class="label-text">Family Member Name</span>
             </label>
             <input
               type="text"
-              placeholder="Enter calendar name"
+              placeholder="Enter family member name"
               class="input input-bordered w-full"
-              value={calendarName()}
-              onInput={(e) => setCalendarName(e.currentTarget.value)}
+              value={memberName()}
+              onInput={(e) => setMemberName(e.currentTarget.value)}
               required
             />
           </div>
@@ -80,8 +78,8 @@ export default function CreateCalendarDialog(props: CreateCalendarDialogProps) {
             <input
               type="color"
               class="input input-bordered w-full h-12"
-              value={calendarColor()}
-              onInput={(e) => setCalendarColor(e.currentTarget.value)}
+              value={memberColor()}
+              onInput={(e) => setMemberColor(e.currentTarget.value)}
             />
           </div>
 
@@ -94,20 +92,20 @@ export default function CreateCalendarDialog(props: CreateCalendarDialogProps) {
             >
               Cancel
             </button>
-                            <button
-                  type="submit"
-                  class="btn btn-primary"
-                  disabled={isSubmitting()}
-                >
-                  {isSubmitting() ? (
-                    <div class="flex items-center gap-2">
-                      <LoadingSpinner size="xs" variant="clock" color="primary" />
-                      Creating...
-                    </div>
-                  ) : (
-                    "Create Calendar"
-                  )}
-                </button>
+            <button
+              type="submit"
+              class="btn btn-primary"
+              disabled={isSubmitting()}
+            >
+              {isSubmitting() ? (
+                <div class="flex items-center gap-2">
+                  <LoadingSpinner size="xs" variant="clock" color="primary" />
+                  Creating...
+                </div>
+              ) : (
+                "Add Family Member"
+              )}
+            </button>
           </div>
         </form>
       </div>
