@@ -3,7 +3,7 @@ type UpgradeProcedure = (db: IDBDatabase) => void;
 class DatabaseService {
   private static instance: DatabaseService;
   private dbName = 'FamilyCalendarDB';
-  private version = 1;
+  private version = 2;
   private db: IDBDatabase | null = null;
   private upgradeProcedures: UpgradeProcedure[] = [];
   private initPromise: Promise<void> | null = null;
