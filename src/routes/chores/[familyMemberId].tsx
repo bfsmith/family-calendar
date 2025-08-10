@@ -3,6 +3,7 @@ import { useParams } from "@solidjs/router";
 import { familyMemberStorage } from "../../services/FamilyMemberStorage";
 import { choreStorage } from "../../services/ChoreStorage";
 import CreateChoreDialog from "../../components/CreateChoreDialog";
+import EditChoreDialog from "../../components/EditChoreDialog";
 import type { FamilyMember } from "../../types/FamilyMember";
 import type { Chore } from "../../types/Chore";
 
@@ -12,6 +13,8 @@ export default function FamilyMemberChores() {
   const [chores, setChores] = createSignal<Chore[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [showChoreDialog, setShowChoreDialog] = createSignal(false);
+  const [showEditDialog, setShowEditDialog] = createSignal(false);
+  const [choreToEdit, setChoreToEdit] = createSignal<Chore | null>(null);
 
   const loadFamilyMember = async () => {
     try {
@@ -80,9 +83,24 @@ export default function FamilyMemberChores() {
     setShowChoreDialog(false);
   };
 
+  const closeEditDialog = () => {
+    setShowEditDialog(false);
+    setChoreToEdit(null);
+  };
+
+  const handleEditChore = (chore: Chore) => {
+    setChoreToEdit(chore);
+    setShowEditDialog(true);
+  };
+
   const handleChoreCreated = () => {
     loadChores(); // Reload chores after creating a new one
     closeChoreDialog();
+  };
+
+  const handleChoreUpdated = () => {
+    loadChores(); // Reload chores after updating one
+    closeEditDialog();
   };
 
   onMount(() => {
@@ -186,6 +204,15 @@ export default function FamilyMemberChores() {
                             </div>
                           )}
                           
+                          {/* Edit button */}
+                          <button
+                            class="btn btn-ghost btn-sm hover:bg-primary hover:text-primary-content"
+                            onClick={() => handleEditChore(chore)}
+                            title="Edit chore"
+                          >
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          
                           {/* Delete button */}
                           <button
                             class="btn btn-ghost btn-sm text-error hover:bg-error hover:text-error-content"
@@ -251,6 +278,15 @@ export default function FamilyMemberChores() {
         onSuccess={handleChoreCreated}
         familyMembers={familyMember() ? [familyMember()!] : []}
         preselectedFamilyMemberId={familyMember()?.id || undefined}
+      />
+
+      {/* Edit Chore Dialog */}
+      <EditChoreDialog 
+        show={showEditDialog()} 
+        onClose={closeEditDialog}
+        onSuccess={handleChoreUpdated}
+        familyMembers={familyMember() ? [familyMember()!] : []}
+        chore={choreToEdit()}
       />
     </main>
   );
