@@ -1,0 +1,45 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#3b82f6" rx="64"/>
+  
+  <!-- Calendar body -->
+  <rect x="96" y="128" width="320" height="256" fill="white" rx="16"/>
+  
+  <!-- Calendar header -->
+  <rect x="96" y="128" width="320" height="64" fill="#1e40af" rx="16"/>
+  <rect x="96" y="176" width="320" height="16" fill="#1e40af"/>
+  
+  <!-- Calendar rings -->
+  <rect x="144" y="96" width="16" height="64" fill="#6b7280" rx="8"/>
+  <rect x="352" y="96" width="16" height="64" fill="#6b7280" rx="8"/>
+  
+  <!-- Calendar grid -->
+  <g fill="#e5e7eb">
+    <rect x="112" y="208" width="32" height="24" rx="4"/>
+    <rect x="160" y="208" width="32" height="24" rx="4"/>
+    <rect x="208" y="208" width="32" height="24" rx="4"/>
+    <rect x="256" y="208" width="32" height="24" rx="4"/>
+    <rect x="304" y="208" width="32" height="24" rx="4"/>
+    <rect x="352" y="208" width="32" height="24" rx="4"/>
+    
+    <rect x="112" y="248" width="32" height="24" rx="4"/>
+    <rect x="160" y="248" width="32" height="24" rx="4"/>
+    <rect x="208" y="248" width="32" height="24" rx="4"/>
+    <rect x="256" y="248" width="32" height="24" rx="4"/>
+    <rect x="304" y="248" width="32" height="24" rx="4"/>
+    <rect x="352" y="248" width="32" height="24" rx="4"/>
+    
+    <rect x="112" y="288" width="32" height="24" rx="4"/>
+    <rect x="160" y="288" width="32" height="24" rx="4"/>
+    <rect x="208" y="288" width="32" height="24" rx="4"/>
+    <rect x="256" y="288" width="32" height="24" rx="4"/>
+    <rect x="304" y="288" width="32" height="24" rx="4"/>
+    <rect x="352" y="288" width="32" height="24" rx="4"/>
+  </g>
+  
+  <!-- Highlighted date -->
+  <rect x="208" y="248" width="32" height="24" fill="#f59e0b" rx="4"/>
+  
+  <!-- Star for points -->
+  <path d="M340 340 L348 356 L364 356 L352 367 L356 383 L340 372 L324 383 L328 367 L316 356 L332 356 Z" fill="#fbbf24"/>
+</svg>
