@@ -153,6 +153,11 @@ class ChoreStorageService {
 
   // Helper method to handle non-recurring chore logic
   private async handleNonRecurringChore(chore: Chore, query: ChoreQuery): Promise<Chore[]> {
+    // If includeAllNonRecurring is true, always include the chore regardless of completion
+    if (query.includeAllNonRecurring) {
+      return [chore];
+    }
+
     // Get all completions for this chore
     const completions = await this.getChoreCompletions(chore.id);
     
@@ -168,7 +173,7 @@ class ChoreStorageService {
           const startDateOnly = new Date(query.startDate!.getFullYear(), query.startDate!.getMonth(), query.startDate!.getDate());
           const endDateOnly = new Date(query.endDate!.getFullYear(), query.endDate!.getMonth(), query.endDate!.getDate());
           
-          return completionDateOnly >= startDateOnly && completionDateOnly <= endDateOnly;
+          return completionDateOnly >= startDateOnly && completionDateOnly < endDateOnly;
         });
         
         return hasCompletionInRange ? [chore] : [];
@@ -208,15 +213,19 @@ class ChoreStorageService {
 
         // For each chore, check if it occurs in the requested time range
         const chorePromises = allChores.map(async (chore) => {
-          if (chore.recurring && query.startDate && query.endDate) {
-            // For recurring chores, generate virtual occurrences in the time range
-            const occurrences = this.calculateChoreOccurrencesInRange(chore, query.startDate, query.endDate);
-            return occurrences;
-          } else if (!chore.recurring) {
+          if (chore.recurring) {
+            if (query.startDate && query.endDate) {
+              // For recurring chores with date range, generate virtual occurrences in the time range
+              const occurrences = this.calculateChoreOccurrencesInRange(chore, query.startDate, query.endDate);
+              return occurrences;
+            } else {
+              // For recurring chores without date range, return the original chore
+              return [chore];
+            }
+          } else {
             // For non-recurring chores, check completion status
             return await this.handleNonRecurringChore(chore, query);
           }
-          return [];
         });
         
         const choreResults = await Promise.all(chorePromises);
@@ -279,7 +288,7 @@ class ChoreStorageService {
       currentDate.setDate(currentDate.getDate() + (interval - remainder));
     }
 
-    while (currentDate <= endDate) {
+    while (currentDate < endDate) {
       const occurrenceDate = new Date(currentDate);
       
       occurrences.push({
@@ -316,14 +325,14 @@ class ChoreStorageService {
       currentDate.setDate(currentDate.getDate() + (interval - remainder) * 7);
     }
 
-    while (currentDate <= endDate) {
+    while (currentDate < endDate) {
       // Check each day of the week for this interval
       for (const dayOfWeek of daysOfWeek) {
         const occurrenceDate = new Date(currentDate);
         occurrenceDate.setDate(currentDate.getDate() + dayOfWeek);
         
         // Skip if this day is outside our query range
-        if (occurrenceDate < startDate || occurrenceDate > endDate) continue;
+        if (occurrenceDate < startDate || occurrenceDate >= endDate) continue;
         
         occurrences.push({
           ...chore,
@@ -347,7 +356,7 @@ class ChoreStorageService {
     let currentDate = new Date(startDate);
     currentDate.setHours(0, 0, 0, 0);
 
-    while (currentDate <= endDate) {
+    while (currentDate < endDate) {
       const dayOfWeek = currentDate.getDay();
       
       // Skip this day if it's not in the allowed days of week
@@ -362,7 +371,7 @@ class ChoreStorageService {
         occurrenceDate.setHours(hour, 0, 0, 0);
         
         // Only include if the occurrence is within our query range
-        if (occurrenceDate >= startDate && occurrenceDate <= endDate) {
+        if (occurrenceDate >= startDate && occurrenceDate < endDate) {
           occurrences.push({
             ...chore,
             id: `${chore.id}_${occurrenceDate.getTime()}`, // Unique ID for this occurrence
@@ -419,7 +428,7 @@ class ChoreStorageService {
           completions = completions.filter(c => c.occurrenceDate >= startDate);
         }
         if (endDate) {
-          completions = completions.filter(c => c.occurrenceDate <= endDate);
+          completions = completions.filter(c => c.occurrenceDate < endDate);
         }
         
         resolve(completions);

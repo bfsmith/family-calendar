@@ -30,6 +30,7 @@ export interface ChoreQuery {
   title?: string;
   familyMemberId?: string; // Filter by specific family member
   recurringOnly?: boolean;
+  includeAllNonRecurring?: boolean; // Include all non-recurring chores regardless of completion status
   limit?: number;
   offset?: number;
 }

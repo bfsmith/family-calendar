@@ -1,4 +1,4 @@
-import { createSignal, For } from "solid-js";
+import { createSignal, For, createEffect } from "solid-js";
 import { choreStorage } from "../services/ChoreStorage";
 import LoadingSpinner from "./LoadingSpinner";
 import type { FamilyMember } from "../types/FamilyMember";
@@ -9,11 +9,12 @@ interface CreateChoreDialogProps {
   onClose: () => void;
   onSuccess?: () => void;
   familyMembers: FamilyMember[];
+  preselectedFamilyMemberId?: string;
 }
 
 export default function CreateChoreDialog(props: CreateChoreDialogProps) {
   const [choreTitle, setChoreTitle] = createSignal("");
-  const [selectedFamilyMemberId, setSelectedFamilyMemberId] = createSignal("");
+  const [selectedFamilyMemberId, setSelectedFamilyMemberId] = createSignal(props.preselectedFamilyMemberId || "");
   const [selectedIcon, setSelectedIcon] = createSignal("");
   const [recurrenceType, setRecurrenceType] = createSignal<"none" | "daily" | "weekly">("none");
   const [dailyInterval, setDailyInterval] = createSignal(1);
@@ -21,9 +22,16 @@ export default function CreateChoreDialog(props: CreateChoreDialogProps) {
   const [weeklyDays, setWeeklyDays] = createSignal<number[]>([]);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
+  // Update selected family member when props change
+  createEffect(() => {
+    if (props.preselectedFamilyMemberId) {
+      setSelectedFamilyMemberId(props.preselectedFamilyMemberId);
+    }
+  });
+
   const closeDialog = () => {
     setChoreTitle("");
-    setSelectedFamilyMemberId("");
+    setSelectedFamilyMemberId(props.preselectedFamilyMemberId || "");
     setSelectedIcon("");
     setRecurrenceType("none");
     setDailyInterval(1);

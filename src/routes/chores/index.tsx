@@ -1,9 +1,9 @@
 import { createSignal, onMount, For, createMemo } from "solid-js";
-import CreateChoreDialog from "../components/CreateChoreDialog";
-import { familyMemberStorage } from "../services/FamilyMemberStorage";
-import { choreStorage } from "../services/ChoreStorage";
-import type { FamilyMember } from "../types/FamilyMember";
-import type { Chore } from "../types/Chore";
+import CreateChoreDialog from "../../components/CreateChoreDialog";
+import { familyMemberStorage } from "../../services/FamilyMemberStorage";
+import { choreStorage } from "../../services/ChoreStorage";
+import type { FamilyMember } from "../../types/FamilyMember";
+import type { Chore } from "../../types/Chore";
 
 export default function Chores() {
 
@@ -298,6 +298,36 @@ export default function Chores() {
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-primary">Chores</h1>
         <div class="flex gap-2 items-center">
+          {/* Family member management dropdown */}
+          {familyMembers().length > 0 && (
+            <div class="dropdown dropdown-end">
+              <div tabindex="0" role="button" class="btn btn-outline btn-sm">
+                <i class="fas fa-users mr-2"></i>
+                Manage
+              </div>
+              <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-56 p-2 shadow-lg border border-base-300">
+                <li class="menu-title">
+                  <span>View Individual Chores</span>
+                </li>
+                <div class="divider my-1"></div>
+                <For each={familyMembers()}>
+                  {(member) => (
+                    <li>
+                      <a href={`/chores/${member.id}`} class="flex items-center gap-3 px-2 py-2">
+                        <div 
+                          class="w-4 h-4 rounded-full flex-shrink-0"
+                          style={{ "background-color": member.color }}
+                        ></div>
+                        <span class="flex-1">{member.name}'s Chores</span>
+                        <i class="fas fa-external-link-alt text-xs opacity-50"></i>
+                      </a>
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </div>
+          )}
+
           {/* Family Member Filter Dropdown */}
           {isMultipleFamilyMembers() && (
             <div class="dropdown dropdown-end">
