@@ -257,6 +257,9 @@ export default function Chores() {
         const newCompleted = new Set(completedChores());
         newCompleted.delete(chore.id);
         setCompletedChores(newCompleted);
+        
+        // Reload family members to get updated point balances
+        await loadFamilyMembers();
       } else {
         // Mark as complete
         // For recurring chores, extract the specific occurrence time from the virtual ID
@@ -280,6 +283,9 @@ export default function Chores() {
         const newCompleted = new Set(completedChores());
         newCompleted.add(chore.id);
         setCompletedChores(newCompleted);
+        
+        // Reload family members to get updated point balances
+        await loadFamilyMembers();
       }
       
     } catch (error) {
@@ -445,6 +451,10 @@ export default function Chores() {
                         {(getChoresForFamilyMember().get(member.id) || []).length}
                       </span>
                     )}
+                    <span class="ml-2 text-xs text-yellow-600 font-medium">
+                      <i class="fas fa-star mr-1"></i>
+                      {member.points || 0}
+                    </span>
                   </div>
                   
                   {/* Chores container */}
@@ -498,23 +508,24 @@ export default function Chores() {
                             </button>
                           </div>
                           
-                          {chore.recurring && (
-                            <div class="text-xs opacity-70" style={{ color: member.color }}>
-                              <i class="fas fa-repeat mr-1"></i>
-                              {chore.recurring.type === 'daily' ? `Every ${chore.recurring.interval} day(s)` :
-                               chore.recurring.type === 'weekly' ? `Weekly` :
-                               chore.recurring.type === 'hourly' ? `Hourly` : 'Recurring'}
+                          <div class="flex items-center justify-between text-xs opacity-70 mt-1">
+                            <div style={{ color: member.color }}>
+                              {chore.recurring && (
+                                <>
+                                  <i class="fas fa-repeat mr-1"></i>
+                                  {chore.recurring.type === 'daily' ? `Every ${chore.recurring.interval} day(s)` :
+                                   chore.recurring.type === 'weekly' ? `Weekly` :
+                                   chore.recurring.type === 'hourly' ? `Hourly` : 'Recurring'}
+                                </>
+                              )}
                             </div>
-                          )}
-                          
-                          {/* Delete button - show on hover */}
-                          <button
-                            class="delete-button absolute bottom-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-                            onClick={(e) => handleDeleteClick(chore, e)}
-                            title="Delete chore"
-                          >
-                            <i class="fas fa-trash text-white text-xs"></i>
-                          </button>
+                            {chore.points && chore.points > 0 && (
+                              <div class="text-yellow-600 font-medium">
+                                <i class="fas fa-star mr-1"></i>
+                                {chore.points} pts
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </For>

@@ -1,5 +1,7 @@
 import { Chore, CreateChoreData, UpdateChoreData, ChoreQuery, ChoreCompletion, CreateChoreCompletionData } from '../types/Chore';
 import { databaseService } from './DatabaseService';
+import { pointsStorage } from './PointsStorage';
+import { familyMemberStorage } from './FamilyMemberStorage';
 
 class ChoreStorageService {
   constructor() {
@@ -51,6 +53,7 @@ class ChoreStorageService {
       familyMemberId: choreData.familyMemberId,
       icon: choreData.icon,
       recurring: choreData.recurring,
+      points: choreData.points,
       createdAt: now,
       updatedAt: now
     };
@@ -391,6 +394,10 @@ class ChoreStorageService {
   async markChoreComplete(completionData: CreateChoreCompletionData): Promise<ChoreCompletion> {
     if (!databaseService.isInitialized()) throw new Error('Database not initialized');
 
+    // Get the chore to check if it has points
+    const chore = await this.getChore(completionData.choreId);
+    if (!chore) throw new Error('Chore not found');
+
     const completion: ChoreCompletion = {
       id: this.generateId(),
       choreId: completionData.choreId,
@@ -399,14 +406,41 @@ class ChoreStorageService {
       occurrenceDate: completionData.occurrenceDate
     };
 
-    return new Promise((resolve, reject) => {
-      const db = databaseService.getDatabase();
-      const transaction = db.transaction(['choreCompletions'], 'readwrite');
-      const store = transaction.objectStore('choreCompletions');
-      const request = store.add(completion);
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = databaseService.getDatabase();
+        const transaction = db.transaction(['choreCompletions'], 'readwrite');
+        const store = transaction.objectStore('choreCompletions');
+        const request = store.add(completion);
 
-      request.onsuccess = () => resolve(completion);
-      request.onerror = () => reject(new Error('Failed to mark chore complete'));
+        request.onsuccess = async () => {
+          // Award points if the chore has points
+          if (chore.points && chore.points > 0) {
+            try {
+              // Create point transaction
+              await pointsStorage.createPointTransaction({
+                familyMemberId: completion.familyMemberId,
+                points: chore.points,
+                choreId: chore.id,
+                choreTitle: chore.title,
+                transactionType: 'chore_complete',
+                occurrenceDate: completion.occurrenceDate
+              });
+
+              // Update family member's point balance
+              const currentBalance = await pointsStorage.calculatePointBalance(completion.familyMemberId);
+              await familyMemberStorage.updateFamilyMemberPoints(completion.familyMemberId, currentBalance);
+            } catch (pointError) {
+              console.error('Failed to award points for chore completion:', pointError);
+              // Don't fail the completion if points fail, just log the error
+            }
+          }
+          resolve(completion);
+        };
+        request.onerror = () => reject(new Error('Failed to mark chore complete'));
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
@@ -447,37 +481,85 @@ class ChoreStorageService {
   async removeChoreCompletion(choreId: string, occurrenceDate: Date): Promise<void> {
     if (!databaseService.isInitialized()) throw new Error('Database not initialized');
 
-    return new Promise((resolve, reject) => {
-      const db = databaseService.getDatabase();
-      const transaction = db.transaction(['choreCompletions'], 'readwrite');
-      const store = transaction.objectStore('choreCompletions');
-      const index = store.index('choreId');
-      const request = index.getAll(IDBKeyRange.only(choreId));
+    // Get the chore to check if it has points
+    const chore = await this.getChore(choreId);
+    if (!chore) throw new Error('Chore not found');
 
-      request.onsuccess = () => {
-        const completions = request.result as ChoreCompletion[];
-        
-        // Find completions that match the exact occurrence date/time
-        const toDelete = completions.filter(completion => {
-          const completionTime = new Date(completion.occurrenceDate);
-          return completionTime.getTime() === occurrenceDate.getTime();
-        });
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = databaseService.getDatabase();
+        const transaction = db.transaction(['choreCompletions'], 'readwrite');
+        const store = transaction.objectStore('choreCompletions');
+        const index = store.index('choreId');
+        const request = index.getAll(IDBKeyRange.only(choreId));
 
-        // Delete matching completions
-        let deletePromises = toDelete.map(completion => {
-          return new Promise<void>((deleteResolve, deleteReject) => {
-            const deleteRequest = store.delete(completion.id);
-            deleteRequest.onsuccess = () => deleteResolve();
-            deleteRequest.onerror = () => deleteReject(new Error('Failed to delete completion'));
-          });
-        });
+        request.onsuccess = async () => {
+          try {
+            const completions = request.result as ChoreCompletion[];
+            
+            // Find completions that match the occurrence date
+            const toDelete = completions.filter(completion => {
+              const completionTime = new Date(completion.occurrenceDate);
+              
+              // For recurring chores, match exact timestamp
+              // For non-recurring chores, match by date only
+              if (chore.recurring) {
+                return completionTime.getTime() === occurrenceDate.getTime();
+              } else {
+                // Non-recurring: compare date only (ignore time)
+                const completionDateOnly = new Date(completionTime.getFullYear(), completionTime.getMonth(), completionTime.getDate());
+                const targetDateOnly = new Date(occurrenceDate.getFullYear(), occurrenceDate.getMonth(), occurrenceDate.getDate());
+                return completionDateOnly.getTime() === targetDateOnly.getTime();
+              }
+            });
 
-        Promise.all(deletePromises)
-          .then(() => resolve())
-          .catch(reject);
-      };
+            // Delete matching completions and handle points
+            let deletePromises = toDelete.map(completion => {
+              return new Promise<void>(async (deleteResolve, deleteReject) => {
+                try {
+                  const deleteRequest = store.delete(completion.id);
+                  deleteRequest.onsuccess = async () => {
+                    // Remove points if the chore had points
+                    if (chore.points && chore.points > 0) {
+                      try {
+                        // Create negative point transaction
+                        await pointsStorage.createPointTransaction({
+                          familyMemberId: completion.familyMemberId,
+                          points: -chore.points, // Negative to remove points
+                          choreId: chore.id,
+                          choreTitle: chore.title,
+                          transactionType: 'chore_uncomplete',
+                          occurrenceDate: completion.occurrenceDate
+                        });
 
-      request.onerror = () => reject(new Error('Failed to get chore completions for deletion'));
+                        // Update family member's point balance
+                        const currentBalance = await pointsStorage.calculatePointBalance(completion.familyMemberId);
+                        await familyMemberStorage.updateFamilyMemberPoints(completion.familyMemberId, currentBalance);
+                      } catch (pointError) {
+                        console.error('Failed to remove points for chore uncompletion:', pointError);
+                        // Don't fail the uncompletion if points fail, just log the error
+                      }
+                    }
+                    deleteResolve();
+                  };
+                  deleteRequest.onerror = () => deleteReject(new Error('Failed to delete completion'));
+                } catch (error) {
+                  deleteReject(error);
+                }
+              });
+            });
+
+            await Promise.all(deletePromises);
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        request.onerror = () => reject(new Error('Failed to get chore completions for deletion'));
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 }

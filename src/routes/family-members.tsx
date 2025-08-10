@@ -102,7 +102,13 @@ export default function FamilyMembers() {
                       class="w-8 h-8 rounded-full flex-shrink-0"
                       style={{ "background-color": member.color }}
                     ></div>
-                    <h2 class="card-title text-lg">{member.name}</h2>
+                    <div class="flex-1">
+                      <h2 class="card-title text-lg">{member.name}</h2>
+                      <div class="flex items-center gap-2 text-sm opacity-70">
+                        <i class="fas fa-star text-yellow-500"></i>
+                        <span>{member.points || 0} points</span>
+                      </div>
+                    </div>
                   </div>
 
                   <div class="card-actions justify-end">

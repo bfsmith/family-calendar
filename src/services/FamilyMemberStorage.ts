@@ -35,7 +35,8 @@ class FamilyMemberStorageService {
     const familyMember: FamilyMember = {
       id: this.generateId(),
       name: familyMemberData.name,
-      color: familyMemberData.color
+      color: familyMemberData.color,
+      points: 0 // Initialize with 0 points
     };
 
     return new Promise((resolve, reject) => {
@@ -53,13 +54,28 @@ class FamilyMemberStorageService {
   async getFamilyMember(id: string): Promise<FamilyMember | null> {
     if (!databaseService.isInitialized()) throw new Error('Database not initialized');
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       const db = databaseService.getDatabase();
       const transaction = db.transaction(['familyMembers'], 'readonly');
       const store = transaction.objectStore('familyMembers');
       const request = store.get(id);
 
-      request.onsuccess = () => resolve(request.result || null);
+      request.onsuccess = async () => {
+        try {
+          let member = request.result || null;
+          
+          // Migrate if member doesn't have points field
+          if (member && member.points === undefined) {
+            member = { ...member, points: 0 };
+            // Update the member in the database
+            await this.migrateFamilyMembersWithPoints([member]);
+          }
+          
+          resolve(member);
+        } catch (error) {
+          reject(error);
+        }
+      };
       request.onerror = () => reject(new Error('Failed to get family member'));
     });
   }
@@ -68,14 +84,68 @@ class FamilyMemberStorageService {
   async getAllFamilyMembers(): Promise<FamilyMember[]> {
     if (!databaseService.isInitialized()) throw new Error('Database not initialized');
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       const db = databaseService.getDatabase();
       const transaction = db.transaction(['familyMembers'], 'readonly');
       const store = transaction.objectStore('familyMembers');
       const request = store.getAll();
 
-      request.onsuccess = () => resolve(request.result || []);
+      request.onsuccess = async () => {
+        try {
+          let familyMembers = request.result || [];
+          
+          // Migrate any family members that don't have points field
+          let needsMigration = false;
+          familyMembers = familyMembers.map(member => {
+            if (member.points === undefined) {
+              needsMigration = true;
+              return { ...member, points: 0 };
+            }
+            return member;
+          });
+
+          // If migration is needed, save the updated members
+          if (needsMigration) {
+            await this.migrateFamilyMembersWithPoints(familyMembers);
+          }
+
+          resolve(familyMembers);
+        } catch (error) {
+          reject(error);
+        }
+      };
       request.onerror = () => reject(new Error('Failed to get family members'));
+    });
+  }
+
+  // Migrate family members to include points field
+  private async migrateFamilyMembersWithPoints(familyMembers: FamilyMember[]): Promise<void> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const db = databaseService.getDatabase();
+      const transaction = db.transaction(['familyMembers'], 'readwrite');
+      const store = transaction.objectStore('familyMembers');
+
+      let completed = 0;
+      const total = familyMembers.length;
+
+      if (total === 0) {
+        resolve();
+        return;
+      }
+
+      familyMembers.forEach(member => {
+        const request = store.put(member);
+        request.onsuccess = () => {
+          completed++;
+          if (completed === total) {
+            console.log(`Migrated ${total} family members to include points field`);
+            resolve();
+          }
+        };
+        request.onerror = () => reject(new Error('Failed to migrate family member points'));
+      });
     });
   }
 
@@ -145,6 +215,29 @@ class FamilyMemberStorageService {
 
       familyMemberRequest.onsuccess = () => resolve();
       familyMemberRequest.onerror = () => reject(new Error('Failed to delete family member'));
+    });
+  }
+
+  // Update family member points balance
+  async updateFamilyMemberPoints(familyMemberId: string, newPointBalance: number): Promise<FamilyMember> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+
+    const existingFamilyMember = await this.getFamilyMember(familyMemberId);
+    if (!existingFamilyMember) throw new Error('Family member not found');
+
+    const updatedFamilyMember: FamilyMember = {
+      ...existingFamilyMember,
+      points: newPointBalance
+    };
+
+    return new Promise((resolve, reject) => {
+      const db = databaseService.getDatabase();
+      const transaction = db.transaction(['familyMembers'], 'readwrite');
+      const store = transaction.objectStore('familyMembers');
+      const request = store.put(updatedFamilyMember);
+
+      request.onsuccess = () => resolve(updatedFamilyMember);
+      request.onerror = () => reject(new Error('Failed to update family member points'));
     });
   }
 

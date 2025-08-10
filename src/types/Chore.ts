@@ -7,6 +7,7 @@ export interface Chore {
   familyMemberId: string; // Associated family member ID
   icon?: string; // Font Awesome icon name (e.g., "fa-broom", "fa-dishes")
   recurring?: RecurringPattern; // Same recurrence patterns as events
+  points?: number; // Optional points awarded for completing this chore (positive integer)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,6 +18,7 @@ export interface CreateChoreData {
   familyMemberId: string; // Required: must specify which family member
   icon?: string; // Optional: Font Awesome icon name
   recurring?: RecurringPattern; // Optional: recurrence pattern
+  points?: number; // Optional points awarded for completing this chore (positive integer)
 }
 
 export interface UpdateChoreData extends Partial<CreateChoreData> {
@@ -48,6 +50,27 @@ export interface CreateChoreCompletionData {
   choreId: string;
   familyMemberId: string;
   occurrenceDate: Date;
+}
+
+// Point transaction tracking for ledger
+export interface PointTransaction {
+  id: string;
+  familyMemberId: string;
+  points: number; // Positive for earning, negative for losing points
+  choreId?: string; // If points came from a chore completion/uncompletion
+  choreTitle?: string; // Cached for display purposes
+  transactionType: 'chore_complete' | 'chore_uncomplete';
+  createdAt: Date;
+  occurrenceDate?: Date; // For recurring chores, which occurrence
+}
+
+export interface CreatePointTransactionData {
+  familyMemberId: string;
+  points: number;
+  choreId?: string;
+  choreTitle?: string;
+  transactionType: 'chore_complete' | 'chore_uncomplete';
+  occurrenceDate?: Date;
 }
 
 // Helper functions for creating chores with different recurrence patterns

@@ -20,6 +20,7 @@ export default function CreateChoreDialog(props: CreateChoreDialogProps) {
   const [dailyInterval, setDailyInterval] = createSignal(1);
   const [weeklyInterval, setWeeklyInterval] = createSignal(1);
   const [weeklyDays, setWeeklyDays] = createSignal<number[]>([]);
+  const [points, setPoints] = createSignal<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
   // Update selected family member when props change
@@ -37,6 +38,7 @@ export default function CreateChoreDialog(props: CreateChoreDialogProps) {
     setDailyInterval(1);
     setWeeklyInterval(1);
     setWeeklyDays([]);
+    setPoints(undefined);
     setIsSubmitting(false);
     props.onClose();
   };
@@ -65,7 +67,8 @@ export default function CreateChoreDialog(props: CreateChoreDialogProps) {
       const choreData: any = {
         title: choreTitle().trim(),
         familyMemberId: selectedFamilyMemberId(),
-        icon: selectedIcon() || undefined
+        icon: selectedIcon() || undefined,
+        points: points()
       };
 
       // Add recurrence if selected
@@ -165,6 +168,28 @@ export default function CreateChoreDialog(props: CreateChoreDialogProps) {
                 )}
               </For>
             </select>
+          </div>
+
+          <div class="form-control mb-4">
+            <label class="label">
+              <span class="label-text">Points (Optional)</span>
+              <span class="label-text-alt">Earn points when completed</span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              placeholder="0"
+              class="input input-bordered w-full"
+              value={points() || ""}
+              onInput={(e) => {
+                const value = e.currentTarget.value;
+                setPoints(value ? Math.max(0, parseInt(value)) : undefined);
+              }}
+            />
+            <label class="label">
+              <span class="label-text-alt">Leave empty or 0 for no points</span>
+            </label>
           </div>
 
           <div class="form-control mb-4">

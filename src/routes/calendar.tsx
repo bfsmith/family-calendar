@@ -293,6 +293,10 @@ export default function Calendar() {
                         style={{ "background-color": calendar.color }}
                       ></div>
                       <span class="flex-1">{calendar.name}</span>
+                      <span class="text-xs text-yellow-600 font-medium">
+                        <i class="fas fa-star mr-1"></i>
+                        {calendar.points || 0}
+                      </span>
                     </label>
                   </li>
                 ))}
@@ -395,6 +399,10 @@ export default function Calendar() {
                       {calendarEvents.length}
                     </span>
                   )}
+                  <span class="ml-2 text-xs text-yellow-600 font-medium">
+                    <i class="fas fa-star mr-1"></i>
+                    {calendar.points || 0}
+                  </span>
                 </div>
                 
                 {/* Time slots container */}

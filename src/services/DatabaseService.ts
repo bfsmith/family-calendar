@@ -3,7 +3,8 @@ type UpgradeProcedure = (db: IDBDatabase) => void;
 class DatabaseService {
   private static instance: DatabaseService;
   private dbName = 'FamilyCalendarDB';
-  private version = 2;
+  // Note: This must be incremented when a database schema change is made, otherwise, the upgrade procedure will not be called.
+  private version = 3;
   private db: IDBDatabase | null = null;
   private upgradeProcedures: UpgradeProcedure[] = [];
   private initPromise: Promise<void> | null = null;

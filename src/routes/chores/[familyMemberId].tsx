@@ -109,6 +109,10 @@ export default function FamilyMemberChores() {
                 <h1 class="text-2xl font-bold">
                   {familyMember()!.name}'s Chores
                 </h1>
+                <div class="flex items-center gap-2 text-sm text-yellow-600 font-medium">
+                  <i class="fas fa-star"></i>
+                  <span>{familyMember()!.points || 0} points</span>
+                </div>
               </div>
             )}
           </div>
@@ -153,12 +157,20 @@ export default function FamilyMemberChores() {
                           {/* Title */}
                           <div class="flex-1">
                             <h3 class="font-semibold text-lg">{chore.title}</h3>
-                            {chore.recurring && (
-                              <div class="flex items-center gap-2 text-sm opacity-70 mt-1">
-                                <i class="fas fa-sync-alt"></i>
-                                <span>{formatRecurrence(chore)}</span>
-                              </div>
-                            )}
+                            <div class="flex items-center justify-between text-sm mt-1">
+                              {chore.recurring && (
+                                <div class="flex items-center gap-2 opacity-70">
+                                  <i class="fas fa-sync-alt"></i>
+                                  <span>{formatRecurrence(chore)}</span>
+                                </div>
+                              )}
+                              {chore.points && chore.points > 0 && (
+                                <div class="flex items-center gap-1 text-yellow-600 font-medium">
+                                  <i class="fas fa-star"></i>
+                                  <span>{chore.points} points</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
 
