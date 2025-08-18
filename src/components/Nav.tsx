@@ -20,6 +20,9 @@ export default function Nav() {
       </div>
       <div class="navbar-end">
         <ThemePicker />
+        <A href="/settings" class="btn btn-ghost btn-circle ml-2" title="Settings">
+          <i class="fas fa-cog text-lg"></i>
+        </A>
       </div>
     </div>
   );
