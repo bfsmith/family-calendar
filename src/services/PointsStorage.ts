@@ -1,7 +1,8 @@
 import { PointTransaction, CreatePointTransactionData } from '../types/Chore';
 import { databaseService } from './DatabaseService';
+import { IExportable, ExportData } from '../types/Export';
 
-class PointsStorageService {
+class PointsStorageService implements IExportable {
   constructor() {
     // Register upgrade procedure for points
     databaseService.registerUpgradeProcedure(this.createPointsStores.bind(this));
@@ -126,6 +127,103 @@ class PointsStorageService {
       };
 
       request.onerror = () => reject(new Error('Failed to get all transactions'));
+    });
+  }
+
+  // Helper method to get all point transactions
+  private async getAllPointTransactions(): Promise<PointTransaction[]> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const db = databaseService.getDatabase();
+      const transaction = db.transaction(['pointTransactions'], 'readonly');
+      const store = transaction.objectStore('pointTransactions');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const transactions = request.result.map((transaction: any) => ({
+          ...transaction,
+          createdAt: new Date(transaction.createdAt),
+          occurrenceDate: new Date(transaction.occurrenceDate)
+        }));
+        resolve(transactions);
+      };
+
+      request.onerror = () => reject(new Error('Failed to get all point transactions'));
+    });
+  }
+
+  // Export functionality
+  getServiceName(): string {
+    return 'PointsStorage';
+  }
+
+  getExportVersion(): string {
+    return '1.0.0';
+  }
+
+  async exportData(): Promise<ExportData> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+
+    const pointTransactions = await this.getAllPointTransactions();
+
+    return {
+      serviceName: this.getServiceName(),
+      version: this.getExportVersion(),
+      data: {
+        pointTransactions: pointTransactions
+      },
+      exportedAt: new Date()
+    };
+  }
+
+  async importData(exportData: ExportData): Promise<void> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+    
+    if (exportData.serviceName !== this.getServiceName()) {
+      throw new Error(`Invalid service name. Expected ${this.getServiceName()}, got ${exportData.serviceName}`);
+    }
+
+    const pointTransactions = exportData.data.pointTransactions as PointTransaction[];
+
+    if (!pointTransactions) {
+      throw new Error('No point transactions data found in export');
+    }
+
+    return new Promise((resolve, reject) => {
+      const db = databaseService.getDatabase();
+      const transaction = db.transaction(['pointTransactions'], 'readwrite');
+      const store = transaction.objectStore('pointTransactions');
+
+      // Clear existing data first
+      const clearRequest = store.clear();
+      
+      clearRequest.onsuccess = () => {
+        let completed = 0;
+        const total = pointTransactions.length;
+
+        if (total === 0) {
+          resolve();
+          return;
+        }
+
+        pointTransactions.forEach(pointTransaction => {
+          const addRequest = store.add(pointTransaction);
+          
+          addRequest.onsuccess = () => {
+            completed++;
+            if (completed === total) {
+              resolve();
+            }
+          };
+          
+          addRequest.onerror = () => {
+            reject(new Error(`Failed to import point transaction: ${pointTransaction.id}`));
+          };
+        });
+      };
+
+      clearRequest.onerror = () => reject(new Error('Failed to clear existing point transactions'));
     });
   }
 }

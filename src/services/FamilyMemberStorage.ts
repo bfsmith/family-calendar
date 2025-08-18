@@ -1,7 +1,8 @@
 import { FamilyMember, CreateFamilyMemberData, UpdateFamilyMemberData } from '../types/FamilyMember';
 import { databaseService } from './DatabaseService';
+import { IExportable, ExportData } from '../types/Export';
 
-class FamilyMemberStorageService {
+class FamilyMemberStorageService implements IExportable {
   constructor() {
     // Register upgrade procedure for family members
     databaseService.registerUpgradeProcedure(this.createFamilyMemberStores.bind(this));
@@ -261,6 +262,80 @@ class FamilyMemberStorageService {
       };
 
       request.onerror = () => reject(new Error('Failed to check family member name'));
+    });
+  }
+
+  // Export functionality
+  getServiceName(): string {
+    return 'FamilyMemberStorage';
+  }
+
+  getExportVersion(): string {
+    return '1.0.0';
+  }
+
+  async exportData(): Promise<ExportData> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+
+    const familyMembers = await this.getAllFamilyMembers();
+
+    return {
+      serviceName: this.getServiceName(),
+      version: this.getExportVersion(),
+      data: {
+        familyMembers: familyMembers
+      },
+      exportedAt: new Date()
+    };
+  }
+
+  async importData(exportData: ExportData): Promise<void> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+    
+    if (exportData.serviceName !== this.getServiceName()) {
+      throw new Error(`Invalid service name. Expected ${this.getServiceName()}, got ${exportData.serviceName}`);
+    }
+
+    const familyMembers = exportData.data.familyMembers as FamilyMember[];
+    if (!familyMembers) {
+      throw new Error('No family members data found in export');
+    }
+
+    return new Promise((resolve, reject) => {
+      const db = databaseService.getDatabase();
+      const transaction = db.transaction(['familyMembers'], 'readwrite');
+      const store = transaction.objectStore('familyMembers');
+
+      // Clear existing data first
+      const clearRequest = store.clear();
+      
+      clearRequest.onsuccess = () => {
+        // Import each family member
+        let completed = 0;
+        const total = familyMembers.length;
+
+        if (total === 0) {
+          resolve();
+          return;
+        }
+
+        familyMembers.forEach(familyMember => {
+          const addRequest = store.add(familyMember);
+          
+          addRequest.onsuccess = () => {
+            completed++;
+            if (completed === total) {
+              resolve();
+            }
+          };
+          
+          addRequest.onerror = () => {
+            reject(new Error(`Failed to import family member: ${familyMember.name}`));
+          };
+        });
+      };
+
+      clearRequest.onerror = () => reject(new Error('Failed to clear existing family members'));
     });
   }
 }

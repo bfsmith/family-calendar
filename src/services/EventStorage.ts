@@ -1,7 +1,8 @@
 import { Event, CreateEventData, UpdateEventData, EventQuery, EventInstance, HourlyRecurrence, WeeklyRecurrence } from '../types/Event';
 import { databaseService } from './DatabaseService';
+import { IExportable, ExportData } from '../types/Export';
 
-class EventStorageService {
+class EventStorageService implements IExportable {
   constructor() {
     // Register upgrade procedure for events
     databaseService.registerUpgradeProcedure(this.createEventStores.bind(this));
@@ -621,6 +622,160 @@ class EventStorageService {
           instanceRequest.onerror = () => rej(new Error('Failed to clear instances'));
         })
       ]).then(() => resolve()).catch(reject);
+    });
+  }
+
+  // Helper method to get all events
+  private async getAllEvents(): Promise<Event[]> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const db = databaseService.getDatabase();
+      const transaction = db.transaction(['events'], 'readonly');
+      const store = transaction.objectStore('events');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const events = request.result.map((event: any) => ({
+          ...event,
+          startTime: new Date(event.startTime),
+          endTime: new Date(event.endTime),
+          createdAt: new Date(event.createdAt)
+        }));
+        resolve(events);
+      };
+
+      request.onerror = () => reject(new Error('Failed to get all events'));
+    });
+  }
+
+  // Helper method to get all event instances
+  private async getAllEventInstances(): Promise<EventInstance[]> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const db = databaseService.getDatabase();
+      const transaction = db.transaction(['eventInstances'], 'readonly');
+      const store = transaction.objectStore('eventInstances');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const instances = request.result.map((instance: any) => ({
+          ...instance,
+          startTime: new Date(instance.startTime),
+          endTime: new Date(instance.endTime)
+        }));
+        resolve(instances);
+      };
+
+      request.onerror = () => reject(new Error('Failed to get all event instances'));
+    });
+  }
+
+  // Export functionality
+  getServiceName(): string {
+    return 'EventStorage';
+  }
+
+  getExportVersion(): string {
+    return '1.0.0';
+  }
+
+  async exportData(): Promise<ExportData> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+
+    const [events, eventInstances] = await Promise.all([
+      this.getAllEvents(),
+      this.getAllEventInstances()
+    ]);
+
+    return {
+      serviceName: this.getServiceName(),
+      version: this.getExportVersion(),
+      data: {
+        events: events,
+        eventInstances: eventInstances
+      },
+      exportedAt: new Date()
+    };
+  }
+
+  async importData(exportData: ExportData): Promise<void> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+    
+    if (exportData.serviceName !== this.getServiceName()) {
+      throw new Error(`Invalid service name. Expected ${this.getServiceName()}, got ${exportData.serviceName}`);
+    }
+
+    const events = exportData.data.events as Event[];
+    const eventInstances = exportData.data.eventInstances as EventInstance[];
+
+    if (!events) {
+      throw new Error('No events data found in export');
+    }
+
+    return new Promise((resolve, reject) => {
+      const db = databaseService.getDatabase();
+      const transaction = db.transaction(['events', 'eventInstances'], 'readwrite');
+      const eventsStore = transaction.objectStore('events');
+      const instancesStore = transaction.objectStore('eventInstances');
+
+      // Clear existing data first
+      Promise.all([
+        new Promise<void>((res, rej) => {
+          const clearEventsRequest = eventsStore.clear();
+          clearEventsRequest.onsuccess = () => res();
+          clearEventsRequest.onerror = () => rej(new Error('Failed to clear events'));
+        }),
+        new Promise<void>((res, rej) => {
+          const clearInstancesRequest = instancesStore.clear();
+          clearInstancesRequest.onsuccess = () => res();
+          clearInstancesRequest.onerror = () => rej(new Error('Failed to clear event instances'));
+        })
+      ]).then(() => {
+        // Import events
+        let completed = 0;
+        const totalItems = events.length + (eventInstances?.length || 0);
+
+        if (totalItems === 0) {
+          resolve();
+          return;
+        }
+
+        // Import events
+        events.forEach(event => {
+          const addRequest = eventsStore.add(event);
+          
+          addRequest.onsuccess = () => {
+            completed++;
+            if (completed === totalItems) {
+              resolve();
+            }
+          };
+          
+          addRequest.onerror = () => {
+            reject(new Error(`Failed to import event: ${event.title}`));
+          };
+        });
+
+        // Import event instances
+        if (eventInstances) {
+          eventInstances.forEach(instance => {
+            const addRequest = instancesStore.add(instance);
+            
+            addRequest.onsuccess = () => {
+              completed++;
+              if (completed === totalItems) {
+                resolve();
+              }
+            };
+            
+            addRequest.onerror = () => {
+              reject(new Error(`Failed to import event instance: ${instance.id}`));
+            };
+          });
+        }
+      }).catch(reject);
     });
   }
 }

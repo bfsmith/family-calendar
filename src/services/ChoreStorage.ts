@@ -2,8 +2,9 @@ import { Chore, CreateChoreData, UpdateChoreData, ChoreQuery, ChoreCompletion, C
 import { databaseService } from './DatabaseService';
 import { pointsStorage } from './PointsStorage';
 import { familyMemberStorage } from './FamilyMemberStorage';
+import { IExportable, ExportData } from '../types/Export';
 
-class ChoreStorageService {
+class ChoreStorageService implements IExportable {
   constructor() {
     // Register upgrade procedure for chores
     databaseService.registerUpgradeProcedure(this.createChoreStores.bind(this));
@@ -94,7 +95,13 @@ class ChoreStorageService {
       const store = transaction.objectStore('chores');
       const request = store.getAll();
 
-      request.onsuccess = () => resolve(request.result || []);
+      request.onsuccess = () => {
+        const chores = request.result.map((chore: any) => ({
+          ...chore,
+          createdAt: new Date(chore.createdAt)
+        }));
+        resolve(chores);
+      };
       request.onerror = () => reject(new Error('Failed to get chores'));
     });
   }
@@ -560,6 +567,137 @@ class ChoreStorageService {
       } catch (error) {
         reject(error);
       }
+    });
+  }
+
+
+
+  // Helper method to get all chore completions
+  private async getAllChoreCompletions(): Promise<ChoreCompletion[]> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const db = databaseService.getDatabase();
+      const transaction = db.transaction(['choreCompletions'], 'readonly');
+      const store = transaction.objectStore('choreCompletions');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const completions = request.result.map((completion: any) => ({
+          ...completion,
+          completedAt: new Date(completion.completedAt),
+          occurrenceDate: new Date(completion.occurrenceDate)
+        }));
+        resolve(completions);
+      };
+
+      request.onerror = () => reject(new Error('Failed to get all chore completions'));
+    });
+  }
+
+  // Export functionality
+  getServiceName(): string {
+    return 'ChoreStorage';
+  }
+
+  getExportVersion(): string {
+    return '1.0.0';
+  }
+
+  async exportData(): Promise<ExportData> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+
+    const [chores, choreCompletions] = await Promise.all([
+      this.getAllChores(),
+      this.getAllChoreCompletions()
+    ]);
+
+    return {
+      serviceName: this.getServiceName(),
+      version: this.getExportVersion(),
+      data: {
+        chores: chores,
+        choreCompletions: choreCompletions
+      },
+      exportedAt: new Date()
+    };
+  }
+
+  async importData(exportData: ExportData): Promise<void> {
+    if (!databaseService.isInitialized()) throw new Error('Database not initialized');
+    
+    if (exportData.serviceName !== this.getServiceName()) {
+      throw new Error(`Invalid service name. Expected ${this.getServiceName()}, got ${exportData.serviceName}`);
+    }
+
+    const chores = exportData.data.chores as Chore[];
+    const choreCompletions = exportData.data.choreCompletions as ChoreCompletion[];
+
+    if (!chores) {
+      throw new Error('No chores data found in export');
+    }
+
+    return new Promise((resolve, reject) => {
+      const db = databaseService.getDatabase();
+      const transaction = db.transaction(['chores', 'choreCompletions'], 'readwrite');
+      const choresStore = transaction.objectStore('chores');
+      const completionsStore = transaction.objectStore('choreCompletions');
+
+      // Clear existing data first
+      Promise.all([
+        new Promise<void>((res, rej) => {
+          const clearChoresRequest = choresStore.clear();
+          clearChoresRequest.onsuccess = () => res();
+          clearChoresRequest.onerror = () => rej(new Error('Failed to clear chores'));
+        }),
+        new Promise<void>((res, rej) => {
+          const clearCompletionsRequest = completionsStore.clear();
+          clearCompletionsRequest.onsuccess = () => res();
+          clearCompletionsRequest.onerror = () => rej(new Error('Failed to clear chore completions'));
+        })
+      ]).then(() => {
+        let completed = 0;
+        const totalItems = chores.length + (choreCompletions?.length || 0);
+
+        if (totalItems === 0) {
+          resolve();
+          return;
+        }
+
+        // Import chores
+        chores.forEach(chore => {
+          const addRequest = choresStore.add(chore);
+          
+          addRequest.onsuccess = () => {
+            completed++;
+            if (completed === totalItems) {
+              resolve();
+            }
+          };
+          
+          addRequest.onerror = () => {
+            reject(new Error(`Failed to import chore: ${chore.title}`));
+          };
+        });
+
+        // Import chore completions
+        if (choreCompletions) {
+          choreCompletions.forEach(completion => {
+            const addRequest = completionsStore.add(completion);
+            
+            addRequest.onsuccess = () => {
+              completed++;
+              if (completed === totalItems) {
+                resolve();
+              }
+            };
+            
+            addRequest.onerror = () => {
+              reject(new Error(`Failed to import chore completion: ${completion.id}`));
+            };
+          });
+        }
+      }).catch(reject);
     });
   }
 }
