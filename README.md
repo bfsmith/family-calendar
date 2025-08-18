@@ -7,9 +7,11 @@ A comprehensive family calendar and chore management system built with SolidJS a
 - **Family Members Management** - Add family members with unique colors and track individual schedules
 - **Calendar Events** - Create one-time and recurring events with intuitive calendar view
 - **Chores & Points System** - Assign chores with point values and track completion
+- **Progressive Web App (PWA)** - Install on any device, works offline, native app experience
 - **Mobile Responsive** - Optimized for tablets and mobile devices
 - **Local Storage** - All data stored locally in browser for privacy
 - **Real-time Updates** - Reactive UI updates when completing tasks
+- **Offline Support** - Continue using the app even without internet connection
 
 ## Quick Start
 
@@ -68,13 +70,34 @@ npm run serve
 npm start
 ```
 
+## Progressive Web App (PWA)
+
+Family Calendar is a full-featured PWA that provides:
+
+### 🔧 **Installation**
+- **Browser Install Prompt**: Automatic install prompts on supported browsers
+- **Desktop & Mobile**: Install on any device (Windows, macOS, iOS, Android)
+- **Native App Experience**: Runs in standalone mode without browser UI
+
+### 📱 **Offline Functionality**
+- **Offline Indicator**: Visual notification when offline
+- **Service Worker Caching**: Automatic caching of app assets and data
+- **Offline Data Access**: Continue viewing and editing your calendar data without internet
+
+### ⚡ **Performance Features**
+- **Fast Loading**: Instant app startup with cached resources
+- **Background Updates**: Automatic app updates without user intervention
+- **Efficient Caching**: Smart caching strategy for optimal performance
+
 ## Technical Stack
 
 - **Frontend Framework**: SolidJS (pure SolidJS without SolidStart)
-- **Build Tool**: Vite
+- **Build Tool**: Vite with PWA plugin
 - **Styling**: TailwindCSS with DaisyUI components
 - **Routing**: @solidjs/router
 - **Data Storage**: Browser local storage (client-side only)
+- **PWA Features**: Service Worker, Web App Manifest, offline caching
+- **Cache Strategy**: Workbox for efficient asset caching and offline support
 
 ## Docker Images
 

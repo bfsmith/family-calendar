@@ -1,45 +1,35 @@
-<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Background -->
-  <rect width="512" height="512" fill="#3b82f6" rx="64"/>
+  <rect width="512" height="512" rx="64" fill="#3B82F6"/>
   
-  <!-- Calendar body -->
-  <rect x="96" y="128" width="320" height="256" fill="white" rx="16"/>
+  <!-- Calendar Icon -->
+  <rect x="96" y="128" width="320" height="288" rx="24" fill="white" stroke="#1E40AF" stroke-width="8"/>
   
-  <!-- Calendar header -->
-  <rect x="96" y="128" width="320" height="64" fill="#1e40af" rx="16"/>
-  <rect x="96" y="176" width="320" height="16" fill="#1e40af"/>
+  <!-- Calendar Header -->
+  <rect x="96" y="128" width="320" height="64" rx="24" fill="#1E40AF"/>
   
-  <!-- Calendar rings -->
-  <rect x="144" y="96" width="16" height="64" fill="#6b7280" rx="8"/>
-  <rect x="352" y="96" width="16" height="64" fill="#6b7280" rx="8"/>
+  <!-- Calendar Rings -->
+  <circle cx="160" cy="112" r="12" fill="white"/>
+  <circle cx="256" cy="112" r="12" fill="white"/>
+  <circle cx="352" cy="112" r="12" fill="white"/>
   
-  <!-- Calendar grid -->
-  <g fill="#e5e7eb">
-    <rect x="112" y="208" width="32" height="24" rx="4"/>
-    <rect x="160" y="208" width="32" height="24" rx="4"/>
-    <rect x="208" y="208" width="32" height="24" rx="4"/>
-    <rect x="256" y="208" width="32" height="24" rx="4"/>
-    <rect x="304" y="208" width="32" height="24" rx="4"/>
-    <rect x="352" y="208" width="32" height="24" rx="4"/>
-    
-    <rect x="112" y="248" width="32" height="24" rx="4"/>
-    <rect x="160" y="248" width="32" height="24" rx="4"/>
-    <rect x="208" y="248" width="32" height="24" rx="4"/>
-    <rect x="256" y="248" width="32" height="24" rx="4"/>
-    <rect x="304" y="248" width="32" height="24" rx="4"/>
-    <rect x="352" y="248" width="32" height="24" rx="4"/>
-    
-    <rect x="112" y="288" width="32" height="24" rx="4"/>
-    <rect x="160" y="288" width="32" height="24" rx="4"/>
-    <rect x="208" y="288" width="32" height="24" rx="4"/>
-    <rect x="256" y="288" width="32" height="24" rx="4"/>
-    <rect x="304" y="288" width="32" height="24" rx="4"/>
-    <rect x="352" y="288" width="32" height="24" rx="4"/>
-  </g>
+  <!-- Calendar Grid -->
+  <line x1="136" y1="232" x2="376" y2="232" stroke="#E5E7EB" stroke-width="2"/>
+  <line x1="136" y1="272" x2="376" y2="272" stroke="#E5E7EB" stroke-width="2"/>
+  <line x1="136" y1="312" x2="376" y2="312" stroke="#E5E7EB" stroke-width="2"/>
+  <line x1="136" y1="352" x2="376" y2="352" stroke="#E5E7EB" stroke-width="2"/>
   
-  <!-- Highlighted date -->
-  <rect x="208" y="248" width="32" height="24" fill="#f59e0b" rx="4"/>
+  <line x1="176" y1="208" x2="176" y2="392" stroke="#E5E7EB" stroke-width="2"/>
+  <line x1="216" y1="208" x2="216" y2="392" stroke="#E5E7EB" stroke-width="2"/>
+  <line x1="256" y1="208" x2="256" y2="392" stroke="#E5E7EB" stroke-width="2"/>
+  <line x1="296" y1="208" x2="296" y2="392" stroke="#E5E7EB" stroke-width="2"/>
+  <line x1="336" y1="208" x2="336" y2="392" stroke="#E5E7EB" stroke-width="2"/>
   
-  <!-- Star for points -->
-  <path d="M340 340 L348 356 L364 356 L352 367 L356 383 L340 372 L324 383 L328 367 L316 356 L332 356 Z" fill="#fbbf24"/>
+  <!-- Highlight Some Days -->
+  <circle cx="156" cy="252" r="8" fill="#10B981"/>
+  <circle cx="276" cy="292" r="8" fill="#F59E0B"/>
+  <circle cx="316" cy="332" r="8" fill="#EF4444"/>
+  
+  <!-- Star for Chores -->
+  <path d="M196 372L200 360L204 372L212 368L206 380L212 384L204 380L200 392L196 380L188 384L194 380L188 368Z" fill="#FBBF24"/>
 </svg>

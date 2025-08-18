@@ -2,6 +2,8 @@ import { Router, Route } from "@solidjs/router";
 import { Suspense, onMount, createSignal, Show } from "solid-js";
 import Nav from "~/components/Nav";
 import LoadingSpinner from "~/components/LoadingSpinner";
+import PWAInstallPrompt from "~/components/PWAInstallPrompt";
+import OfflineIndicator from "~/components/OfflineIndicator";
 import { init } from "~/services/init";
 import "./app.css";
 
@@ -66,8 +68,10 @@ export default function App() {
       <Router
         root={props => (
           <>
+            <OfflineIndicator />
             <Nav />
             <Suspense>{props.children}</Suspense>
+            <PWAInstallPrompt />
           </>
         )}
       >

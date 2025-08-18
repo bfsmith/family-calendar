@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+</head>
+<body>
+    <canvas id="canvas192" width="192" height="192" style="border: 1px solid #ccc;"></canvas>
+    <canvas id="canvas512" width="512" height="512" style="border: 1px solid #ccc;"></canvas>
+    <canvas id="canvasApple" width="180" height="180" style="border: 1px solid #ccc;"></canvas>
+    
+    <script>
+        function createIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // Background
+            ctx.fillStyle = '#3B82F6';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Calendar
+            const scale = size / 192;
+            const calendarWidth = 120 * scale;
+            const calendarHeight = 120 * scale;
+            const x = (size - calendarWidth) / 2;
+            const y = (size - calendarHeight) / 2 + 10 * scale;
+            
+            // White background
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x, y, calendarWidth, calendarHeight);
+            
+            // Blue header
+            ctx.fillStyle = '#1E40AF';
+            ctx.fillRect(x, y, calendarWidth, 30 * scale);
+            
+            // Calendar rings
+            ctx.fillStyle = 'white';
+            const ringSize = 6 * scale;
+            ctx.beginPath();
+            ctx.arc(x + 20 * scale, y - 8 * scale, ringSize, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + 60 * scale, y - 8 * scale, ringSize, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + 100 * scale, y - 8 * scale, ringSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Event dots
+            ctx.fillStyle = '#10B981';
+            ctx.beginPath();
+            ctx.arc(x + 20 * scale, y + 50 * scale, 4 * scale, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#F59E0B';
+            ctx.beginPath();
+            ctx.arc(x + 60 * scale, y + 80 * scale, 4 * scale, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#EF4444';
+            ctx.beginPath();
+            ctx.arc(x + 100 * scale, y + 110 * scale, 4 * scale, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            return canvas.toDataURL('image/png');
+        }
+        
+        // Create icons
+        const icon192 = createIcon('canvas192', 192);
+        const icon512 = createIcon('canvas512', 512);
+        const iconApple = createIcon('canvasApple', 180);
+        
+        // Log data URLs (we'll extract these)
+        console.log('192x192:', icon192);
+        console.log('512x512:', icon512);
+        console.log('Apple Touch:', iconApple);
+    </script>
+</body>
+</html>
