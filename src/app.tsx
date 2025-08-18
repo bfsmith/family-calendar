@@ -1,10 +1,18 @@
-import { Router } from "@solidjs/router";
-import { FileRoutes } from "@solidjs/start/router";
+import { Router, Route } from "@solidjs/router";
 import { Suspense, onMount, createSignal, Show } from "solid-js";
 import Nav from "~/components/Nav";
 import LoadingSpinner from "~/components/LoadingSpinner";
 import { init } from "~/services/init";
 import "./app.css";
+
+// Import route components
+import Home from "~/routes/index";
+import Calendar from "~/routes/calendar";
+import FamilyMembers from "~/routes/family-members";
+import Settings from "~/routes/settings";
+import Chores from "~/routes/chores/index";
+import FamilyMemberChores from "~/routes/chores/[familyMemberId]";
+import NotFound from "~/routes/[...404]";
 
 export default function App() {
   const [isDbInitialized, setIsAppInitialized] = createSignal(false);
@@ -63,7 +71,13 @@ export default function App() {
           </>
         )}
       >
-        <FileRoutes />
+        <Route path="/" component={Home} />
+        <Route path="/calendar" component={Calendar} />
+        <Route path="/family-members" component={FamilyMembers} />
+        <Route path="/settings" component={Settings} />
+        <Route path="/chores" component={Chores} />
+        <Route path="/chores/:familyMemberId" component={FamilyMemberChores} />
+        <Route path="/*" component={NotFound} />
       </Router>
     </Show>
   );

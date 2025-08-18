@@ -1,6 +1,6 @@
 # Family Calendar
 
-A comprehensive family calendar and chore management system built with SolidJS. Organize your family life with events, chores, and point-based rewards.
+A comprehensive family calendar and chore management system built with SolidJS and Vite. Organize your family life with events, chores, and point-based rewards.
 
 ## Features
 
@@ -48,7 +48,7 @@ cd family-calendar
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (Vite)
 npm run dev
 ```
 
@@ -58,12 +58,23 @@ npm run dev
 # Install dependencies
 npm install
 
-# Build for production
+# Build for production (Vite)
 npm run build
 
-# Start production server
+# Preview production build locally
+npm run serve
+
+# Start production server (Docker recommended for deployment)
 npm start
 ```
+
+## Technical Stack
+
+- **Frontend Framework**: SolidJS (pure SolidJS without SolidStart)
+- **Build Tool**: Vite
+- **Styling**: TailwindCSS with DaisyUI components
+- **Routing**: @solidjs/router
+- **Data Storage**: Browser local storage (client-side only)
 
 ## Docker Images
 
