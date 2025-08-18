@@ -742,9 +742,16 @@ class EventStorageService implements IExportable {
           return;
         }
 
-        // Import events
+        // Import events (convert string dates back to Date objects)
         events.forEach(event => {
-          const addRequest = eventsStore.add(event);
+          const eventWithDates = {
+            ...event,
+            startTime: new Date(event.startTime),
+            endTime: new Date(event.endTime),
+            createdAt: new Date(event.createdAt)
+          };
+          
+          const addRequest = eventsStore.add(eventWithDates);
           
           addRequest.onsuccess = () => {
             completed++;
@@ -758,10 +765,16 @@ class EventStorageService implements IExportable {
           };
         });
 
-        // Import event instances
+        // Import event instances (convert string dates back to Date objects)
         if (eventInstances) {
           eventInstances.forEach(instance => {
-            const addRequest = instancesStore.add(instance);
+            const instanceWithDates = {
+              ...instance,
+              startTime: new Date(instance.startTime),
+              endTime: new Date(instance.endTime)
+            };
+            
+            const addRequest = instancesStore.add(instanceWithDates);
             
             addRequest.onsuccess = () => {
               completed++;

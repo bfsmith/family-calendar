@@ -664,9 +664,14 @@ class ChoreStorageService implements IExportable {
           return;
         }
 
-        // Import chores
+        // Import chores (convert string dates back to Date objects)
         chores.forEach(chore => {
-          const addRequest = choresStore.add(chore);
+          const choreWithDates = {
+            ...chore,
+            createdAt: new Date(chore.createdAt)
+          };
+          
+          const addRequest = choresStore.add(choreWithDates);
           
           addRequest.onsuccess = () => {
             completed++;
@@ -680,10 +685,16 @@ class ChoreStorageService implements IExportable {
           };
         });
 
-        // Import chore completions
+        // Import chore completions (convert string dates back to Date objects)
         if (choreCompletions) {
           choreCompletions.forEach(completion => {
-            const addRequest = completionsStore.add(completion);
+            const completionWithDates = {
+              ...completion,
+              completedAt: new Date(completion.completedAt),
+              occurrenceDate: new Date(completion.occurrenceDate)
+            };
+            
+            const addRequest = completionsStore.add(completionWithDates);
             
             addRequest.onsuccess = () => {
               completed++;

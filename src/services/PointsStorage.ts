@@ -208,7 +208,13 @@ class PointsStorageService implements IExportable {
         }
 
         pointTransactions.forEach(pointTransaction => {
-          const addRequest = store.add(pointTransaction);
+          const transactionWithDates = {
+            ...pointTransaction,
+            createdAt: new Date(pointTransaction.createdAt),
+            occurrenceDate: pointTransaction.occurrenceDate ? new Date(pointTransaction.occurrenceDate) : new Date()
+          };
+          
+          const addRequest = store.add(transactionWithDates);
           
           addRequest.onsuccess = () => {
             completed++;
