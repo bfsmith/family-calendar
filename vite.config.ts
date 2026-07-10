@@ -23,7 +23,21 @@ export default defineConfig({
         icons: []
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,mp3}'],
+        // Cache audio files with a longer max age since they don't change often
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\/audio\/.*\.mp3$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'audio-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
+              }
+            }
+          }
+        ]
       }
     })
   ],

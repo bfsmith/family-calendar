@@ -52,7 +52,8 @@ class EventStorageService implements IExportable {
       allDay: eventData.allDay || false,
       recurring: eventData.recurring,
       calendarId: eventData.calendarId,
-      color: eventData.color // Don't set default, let calendar color be used
+      color: eventData.color, // Don't set default, let calendar color be used
+      soundEffect: eventData.soundEffect // Optional sound effect
     };
 
     return new Promise((resolve, reject) => {

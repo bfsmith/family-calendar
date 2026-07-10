@@ -8,6 +8,7 @@ export interface Event {
   recurring?: RecurringPattern;
   calendarId: string; // Associated calendar ID
   color?: string; // Theme color for the event (can override calendar color)
+  soundEffect?: string; // Optional sound effect name to play for this event
 }
 
 // Recurring pattern types
@@ -51,6 +52,7 @@ export interface CreateEventData {
   recurring?: RecurringPattern;
   calendarId: string; // Required: must specify which calendar
   color?: string; // Optional: can override calendar color
+  soundEffect?: string; // Optional: sound effect name to play for this event
 }
 
 export interface UpdateEventData extends Partial<CreateEventData> {

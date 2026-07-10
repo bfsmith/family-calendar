@@ -159,3 +159,6 @@ MIT License - see LICENSE file for details
 ## Privacy
 
 All data is stored locally in your browser using IndexedDB. No data is sent to external servers, ensuring complete privacy for your family information.
+
+
+Sound effects were found on [Pixabay](https://pixabay.com/)
